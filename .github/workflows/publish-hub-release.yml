@@ -28,23 +28,40 @@ jobs:
       - name: CheckRelease
         id: check
         run: |
-          TAG=$(git ls-remote --tags --refs ${{ env.WEBREPO }} | awk '{print $2}' | sort -V | tail -n1 | cut -d/ -f3)
-          URL=$(wget https://raw.githubusercontent.com/Stremio/stremio-shell/master/server-url.txt -O server-url.txt; cat server-url.txt)
-          BODY=$(curl -s https://api.github.com/repos/tsaridas/stremio-docker/releases/latest  | grep body | awk -F\" '{print $4}')
-          OLDTAG=$(echo $BODY | awk '{print $3}')
-          OLDURL=$(echo $BODY | awk '{print $7}')
-          if [ "$TAG" == "$OLDTAG" ]; then
-            echo "${TAG} is the same as ${OLDTAG} "
-          else
-            echo "We need to release. Found new tag ${TAG}"
+          # Check if Docker image exists
+          REPO_NAME="${{ env.REGISTRY_IMAGE }}"
+          REPO_OWNER=$(echo $REPO_NAME | cut -d/ -f1)
+          REPO_IMAGE=$(echo $REPO_NAME | cut -d/ -f2)
+          
+          # Check if image exists on Docker Hub
+          IMAGE_EXISTS=$(curl -s -f "https://hub.docker.com/v2/repositories/${REPO_OWNER}/${REPO_IMAGE}/tags/latest" > /dev/null && echo "true" || echo "false")
+          
+          if [ "$IMAGE_EXISTS" != "true" ]; then
+            echo "Docker image ${REPO_NAME}:latest doesn't exist yet, need to create it"
             RELEASE="true"
-          fi
-          if [ "$URL" == "$OLDURL" ]; then
-            echo "${URL} is the same as ${OLDURL}" 
           else
-            echo "We need to release. Found new url ${URL}"
-            RELEASE="true"
+            echo "Docker image ${REPO_NAME}:latest exists, checking for updates"
+            
+            # Continue with existing checks
+            TAG=$(git ls-remote --tags --refs ${{ env.WEBREPO }} | awk '{print $2}' | sort -V | tail -n1 | cut -d/ -f3)
+            URL=$(wget https://raw.githubusercontent.com/Stremio/stremio-shell/master/server-url.txt -O server-url.txt; cat server-url.txt)
+            BODY=$(curl -s https://api.github.com/repos/tsaridas/stremio-docker/releases/latest  | grep body | awk -F\" '{print $4}')
+            OLDTAG=$(echo $BODY | awk '{print $3}')
+            OLDURL=$(echo $BODY | awk '{print $7}')
+            if [ "$TAG" == "$OLDTAG" ]; then
+              echo "${TAG} is the same as ${OLDTAG} "
+            else
+              echo "We need to release. Found new tag ${TAG}"
+              RELEASE="true"
+            fi
+            if [ "$URL" == "$OLDURL" ]; then
+              echo "${URL} is the same as ${OLDURL}" 
+            else
+              echo "We need to release. Found new url ${URL}"
+              RELEASE="true"
+            fi
           fi
+          
           if [ "$RELEASE" ]; then
             VERSION=$(curl -s https://api.github.com/repos/tsaridas/stremio-docker/releases/latest | grep \"name | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
             NEWVERSION=${VERSION:0:-1}$((${VERSION: -1}+1))
