@@ -9,6 +9,16 @@ if ! grep -q 'self.proxyStreamsEnabled = false,' server.js; then
     sed -i '/self.allTranscodeProfiles = \[\]/a \ \ \ \ \ \ \ \ self.proxyStreamsEnabled = false,' server.js
 fi
 
+# Update paths in server-settings.json if it exists
+if [ -f "${CONFIG_FOLDER}server-settings.json" ]; then
+    echo "Updating paths in server-settings.json to match CONFIG_FOLDER: ${CONFIG_FOLDER}"
+    # Use sed to replace any path with the new CONFIG_FOLDER path
+    # Remove trailing slash from CONFIG_FOLDER for consistency in the JSON file
+    CONFIG_PATH=$(echo "${CONFIG_FOLDER}" | sed 's:/$::')
+    sed -i "s|\"appPath\": \"[^\"]*\"|\"appPath\": \"${CONFIG_PATH}\"|g" "${CONFIG_FOLDER}server-settings.json"
+    sed -i "s|\"cacheRoot\": \"[^\"]*\"|\"cacheRoot\": \"${CONFIG_PATH}\"|g" "${CONFIG_FOLDER}server-settings.json"
+fi
+
 sed -i 's/df -k/df -Pk/g' server.js
 
 if [ -n "${SERVER_URL}" ]; then
