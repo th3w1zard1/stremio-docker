@@ -212,6 +212,7 @@ if [ -n "${IPADDRESS}" ]; then
     echo "[STARTUP] Server started with PID: ${SERVER_PID}"
 
     # Handle IP address resolution for "any address" values
+    if [ "${IPADDRESS}" = "0.0.0.0" ] || [ "${IPADDRESS}" = "*" ] || [ "${IPADDRESS}" = "any" ]; then
         echo "[STARTUP] IPADDRESS is set to '${IPADDRESS}' which indicates 'any address'"
         PUBLIC_IP=$(get_public_ip)
 
